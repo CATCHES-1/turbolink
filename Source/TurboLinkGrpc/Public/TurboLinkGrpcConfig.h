@@ -17,7 +17,7 @@ public:
 
 	// The GCS bucket containing assets being requested
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Request Config")
-	FString Bucket=;
+	FString Bucket;
 
 	// Base path inside the bucket where assets are located
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Request Config")
