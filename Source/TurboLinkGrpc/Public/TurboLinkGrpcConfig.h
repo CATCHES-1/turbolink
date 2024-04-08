@@ -15,7 +15,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Authorization")
 	FString Bearer;
 
-	// The GCS bucket containing assets being requested
+	// The bucket containing assets being requested
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Request Config")
 	FString Bucket;
 
