@@ -2,15 +2,12 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 set -euo pipefail
 
-
 # make sure input proto files exist
 INPUT_PROTO_FILE=${1:?Please provide input proto file as first argument}
 if [ ! -f "${INPUT_PROTO_FILE}" ]; then
     echo "Input proto file '${INPUT_PROTO_FILE}' not exist!"
     exit 1
 fi
-
-INPUT_PROTO_PATH=$(dirname "${INPUT_PROTO_FILE}")
 
 # make sure output path exist
 OUTPUT_PATH=${2:?Please provide output path as second argument}
@@ -76,7 +73,6 @@ echo "Generating code..."
 args=(
     "${PROTOC_EXE_PATH}"
     --proto_path="${PROTOBUF_INC_PATH}"
-    --proto_path="${INPUT_PROTO_PATH}"
     --cpp_out="${CPP_OUTPUT_PATH}"
     --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_EXE_PATH}" --grpc_out="${CPP_OUTPUT_PATH}"
     --plugin=protoc-gen-turbolink="${TURBOLINK_PLUGIN_PATH}" --turbolink_out="${OUTPUT_PATH}"
@@ -84,31 +80,52 @@ args=(
 )
 
 # Check if there's a vendored google dir
-cur_dir=${INPUT_PROTO_PATH}
+cur_dir=$(dirname "${INPUT_PROTO_FILE}")
 upper_dir=$(dirname "${cur_dir}")
+found=false
 while [[ "${cur_dir}" != "${upper_dir}" ]]; do
     if [[ -d "${cur_dir}/google" ]]; then
         args+=(--proto_path="${cur_dir}")
+        found=true
         break
     fi
     cur_dir=${upper_dir}
     upper_dir=$(dirname "${cur_dir}")
 done
+if [[ "${found}" == false ]]; then
+    args+=(--proto_path="$(dirname "${INPUT_PROTO_FILE}")")
+    echo "No vendored google dir found in the path, using input proto path... this might cause path problems!"
+fi
 
 set -x
 "${args[@]}" "${INPUT_PROTO_FILE}"
+set +x
 
 FixCompileWarning() {
     FIX_FILE=$1
     FILE_PATH=$(dirname "$2")
-    FILE_NAME=$(basename "${2%%.proto}").$3
+    FILE_NAME=$(basename "${2%%.proto}")
 
-    pushd "${FILE_PATH}"
+    pushd "${FILE_PATH}" >/dev/null
     cat "${FIX_FILE}" "${FILE_NAME}" > "${FILE_NAME}.tmp"
     rm -f "${FILE_NAME}"
     mv "${FILE_NAME}.tmp" "${FILE_NAME}"
-    popd
+    popd >/dev/null
 }
+
 echo "Fixing protobuf compile warning..."
-FixCompileWarning "${FIX_PROTO_H}" "${CPP_OUTPUT_PATH}/$(basename "${INPUT_PROTO_FILE}")" "pb.h"
-FixCompileWarning "${FIX_PROTO_CPP}" "${CPP_OUTPUT_PATH}/$(basename "${INPUT_PROTO_FILE}")" "pb.cc"
+find "${CPP_OUTPUT_PATH}" -type f -name "*.pb.h" | while read -r file; do
+    if ! grep '#pragma warning' "${file}" >/dev/null; then
+        echo "Fixing ${file}..."
+        FixCompileWarning "${FIX_PROTO_H}" "${file}"
+    fi
+done
+find "${CPP_OUTPUT_PATH}" -type f -name "*.pb.cc" | while read -r file; do
+    if ! grep '#pragma warning' "${file}" >/dev/null; then
+        echo "Fixing ${file}..."
+        FixCompileWarning "${FIX_PROTO_CPP}" "${file}"
+    fi
+done
+
+echo "Fixing line endings..."
+find "${OUTPUT_PATH}" -type f -exec dos2unix {} \; >/dev/null 2>&1
