@@ -20,6 +20,7 @@ fi
 TL_UE_PLUGIN_PATH="${SCRIPT_DIR}/.."
 
 TURBOLINK_PLUGIN_PATH=${TL_UE_PLUGIN_PATH}/Tools/protoc-gen-turbolink.sh
+PROTOC_GEN_CPP_EXE_PATH=${TL_UE_PLUGIN_PATH}/Tools/$(go env GOOS)/$(go env GOARCH)/protoc-gen-cpp
 PROTOBUF_INC_PATH=${TL_UE_PLUGIN_PATH}/Source/ThirdParty/protobuf/include
 FIX_PROTO_CPP=${TL_UE_PLUGIN_PATH}/Tools/fix_proto_cpp.txt
 FIX_PROTO_H=${TL_UE_PLUGIN_PATH}/Tools/fix_proto_h.txt
@@ -73,7 +74,7 @@ echo "Generating code..."
 args=(
     "${PROTOC_EXE_PATH}"
     --proto_path="${PROTOBUF_INC_PATH}"
-    --cpp_out="${CPP_OUTPUT_PATH}"
+    --plugin=protoc-gen-cpp="${PROTOC_GEN_CPP_EXE_PATH}" --cpp_out="${CPP_OUTPUT_PATH}"
     --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_EXE_PATH}" --grpc_out="${CPP_OUTPUT_PATH}"
     --plugin=protoc-gen-turbolink="${TURBOLINK_PLUGIN_PATH}" --turbolink_out="${OUTPUT_PATH}"
     --turbolink_opt="GenerateJsonCode=true"
